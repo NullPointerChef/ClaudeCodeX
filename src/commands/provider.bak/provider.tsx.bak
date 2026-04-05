@@ -1,0 +1,178 @@
+import chalk from 'chalk'
+import * as React from 'react'
+import { Select } from '../../components/CustomSelect/select.js'
+import type { LocalJSXCommandCall, CommandResultDisplay } from '../../types/command.js'
+import {
+  getOpenAICompatConfig,
+  setOpenAICompatConfig,
+  PROVIDER_PRESETS,
+  type ProviderName,
+  type OpenAIProviderConfig,
+} from '../../services/api/openai/providerConfig.js'
+import { inferThinkingMode } from '../../services/api/openai/thinkingHandler.js'
+
+type ProviderValue = ProviderName | 'anthropic'
+
+const PROVIDER_OPTIONS: Array<{
+  label: string
+  value: ProviderValue
+  description: string
+}> = [
+  { label: 'Anthropic', value: 'anthropic', description: 'Default Anthropic API' },
+  { label: 'OpenAI', value: 'openai', description: 'api.openai.com' },
+  { label: 'OpenRouter', value: 'openrouter', description: 'openrouter.ai' },
+  { label: 'SiliconFlow', value: 'siliconflow', description: 'api.siliconflow.cn' },
+  { label: 'Custom', value: 'custom', description: 'Custom OpenAI-compatible endpoint' },
+]
+
+function ProviderPicker({
+  onDone,
+}: {
+  onDone: (
+    result?: string,
+    options?: { display?: CommandResultDisplay },
+  ) => void
+}) {
+  return (
+    <Select<ProviderValue>
+      options={PROVIDER_OPTIONS}
+      onChange={(value) => {
+        applyProvider(value, undefined, onDone)
+      }}
+    />
+  )
+}
+
+function SetProviderDirect({
+  args,
+  onDone,
+}: {
+  args: string
+  onDone: (
+    result?: string,
+    options?: { display?: CommandResultDisplay },
+  ) => void
+}) {
+  React.useEffect(() => {
+    const parts = args.trim().split(/\s+/)
+    const providerArg = parts[0]!.toLowerCase() as ProviderValue
+    const modelArg = parts[1]
+    applyProvider(providerArg, modelArg, onDone)
+  }, [args, onDone])
+  return null
+}
+
+function ShowProviderAndClose({
+  onDone,
+}: {
+  onDone: (
+    result?: string,
+    options?: { display?: CommandResultDisplay },
+  ) => void
+}) {
+  const config = getOpenAICompatConfig()
+  if (config) {
+    onDone(
+      `Current provider: ${chalk.bold(config.providerName)} · ${config.baseURL}\nModel: ${chalk.bold(config.model)} · Thinking: ${config.thinkingMode.type}`,
+    )
+  } else {
+    onDone(`Current provider: ${chalk.bold('Anthropic')} (default)`)
+  }
+  return null
+}
+
+const COMMON_INFO_ARGS = ['?', 'status', 'info', 'current']
+const COMMON_HELP_ARGS = ['help', '-h', '--help']
+
+export const call: LocalJSXCommandCall = async (onDone, _context, args) => {
+  args = args?.trim() || ''
+
+  if (COMMON_INFO_ARGS.includes(args)) {
+    return <ShowProviderAndClose onDone={onDone} />
+  }
+
+  if (COMMON_HELP_ARGS.includes(args)) {
+    onDone(
+      'Usage: /provider [openai|openrouter|siliconflow|custom|anthropic] [model]\n' +
+        'Env vars: OPENAI_COMPAT_API_KEY, OPENAI_COMPAT_MODEL, OPENAI_COMPAT_BASE_URL',
+      { display: 'system' },
+    )
+    return
+  }
+
+  if (args) {
+    return <SetProviderDirect args={args} onDone={onDone} />
+  }
+
+  return <ProviderPicker onDone={onDone} />
+}
+
+// ─── Shared logic ────────────────────────────────────────────────────────────
+
+function applyProvider(
+  providerValue: ProviderValue,
+  modelOverride: string | undefined,
+  onDone: (
+    result?: string,
+    options?: { display?: CommandResultDisplay },
+  ) => void,
+): void {
+  if (providerValue === 'anthropic' || providerValue === ('default' as any)) {
+    setOpenAICompatConfig(null)
+    onDone(`Switched to ${chalk.bold('Anthropic')} (default)`)
+    return
+  }
+
+  const providerName = providerValue as ProviderName
+  const preset = PROVIDER_PRESETS[providerName]
+  if (!preset) {
+    onDone(
+      `Unknown provider '${providerValue}'. Available: anthropic, openai, openrouter, siliconflow, custom`,
+      { display: 'system' },
+    )
+    return
+  }
+
+  const apiKey = process.env.OPENAI_COMPAT_API_KEY || ''
+  if (!apiKey) {
+    onDone(
+      `Set ${chalk.bold('OPENAI_COMPAT_API_KEY')} env var first, then run /provider ${providerName}`,
+      { display: 'system' },
+    )
+    return
+  }
+
+  const model =
+    modelOverride ||
+    process.env.OPENAI_COMPAT_MODEL ||
+    getDefaultModelForProvider(providerName)
+  const thinkingMode = inferThinkingMode(providerName, model)
+
+  const config: OpenAIProviderConfig = {
+    providerName,
+    baseURL: process.env.OPENAI_COMPAT_BASE_URL || preset.baseURL,
+    apiKey,
+    model,
+    thinkingMode,
+  }
+  setOpenAICompatConfig(config)
+  onDone(
+    `Switched to ${chalk.bold(preset.label)} · Model: ${chalk.bold(model)}` +
+      (thinkingMode.type !== 'none'
+        ? ` · Thinking: ${thinkingMode.type}`
+        : ''),
+  )
+}
+
+function getDefaultModelForProvider(name: ProviderName): string {
+  switch (name) {
+    case 'openai':
+      return 'gpt-4o'
+    case 'openrouter':
+      return 'openai/gpt-4o'
+    case 'siliconflow':
+      return 'deepseek-ai/DeepSeek-V3'
+    default:
+      return 'gpt-4o'
+  }
+}
