@@ -1,4 +1,4 @@
-# FrankenClaude
+# ClaudeCodeX
 
 基于 [claude-code-best](https://github.com/claude-code-best/claude-code) 的 Claude Code CLI 扩展，新增了对 **Codex CLI 本地配置**和 **SiliconFlow** 的支持，可接入更多模型服务商。
 
