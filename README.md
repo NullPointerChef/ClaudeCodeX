@@ -1,14 +1,14 @@
 # ClaudeCodeX
 
-基于 [claude-code-best](https://github.com/claude-code-best/claude-code) 的 Claude Code CLI 扩展，新增了对 **Codex CLI 本地配置**和 **SiliconFlow** 的支持，可接入更多模型服务商。
+一个开源的 TypeScript 实现的 Claude Code 兼容 CLI，完整源码可读、可修改、可自行构建。在 [claude-code-best](https://github.com/claude-code-best/claude-code) 社区工作的基础上，扩展了对 **Codex CLI 本地配置**和 **SiliconFlow** 的支持，可接入更多模型服务商。
 
-> **免责声明**：本项目仅供个人学习与技术研究，使用前请确保你已遵守各平台（Anthropic、OpenAI、SiliconFlow 等）的服务条款。本项目不对任何因使用本软件导致的账号封禁、法律责任或其他损失负责。
+> **免责声明**：本项目为独立开源实现，仅供个人学习与技术研究，使用前请确保你已遵守各平台（Anthropic、OpenAI、SiliconFlow 等）的服务条款。本项目不对任何因使用本软件导致的账号封禁、法律责任或其他损失负责。
 
 ## 新增功能
 
 ### Codex CLI 本地配置读取
 
-若本机已安装并配置 [Codex CLI](https://github.com/openai/codex)，MyClaw 会自动读取其本地配置文件（`~/.codex/auth.json`），免去重复填写 API Key 的步骤。支持 API Key 模式与 OAuth Token 模式。
+若本机已安装并配置 [Codex CLI](https://github.com/openai/codex)，ClaudeCodeX 会自动读取其本地配置文件（`~/.codex/auth.json`），免去重复填写 API Key 的步骤。支持 API Key 模式与 OAuth Token 模式。
 
 ### SiliconFlow 支持
 
